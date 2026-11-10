@@ -12,8 +12,8 @@ app.get('/', (req, res) => {
 const CITY_APIS = {
     taichung: {
         name: '臺中市',
-        // 🌟 已經替換成你專屬的 Cloudflare Workers 代理網址
-        url: 'https://taichung-garbage-proxy.segary1978.workers.dev', 
+        // 🌟 這裡必須是你的 Cloudflare Worker 網址
+        url: 'https://taichung-garbage-proxy.segary1978.workers.dev',
         format: (item) => ({
             car: item.car || '未知車牌',
             lineId: item.lineid || '未知路線',
@@ -44,7 +44,8 @@ app.get('/api/garbage/trucks', async (req, res) => {
         if (!apiInfo) return res.status(400).json({ error: '尚未支援該縣市' });
 
         const response = await axios.get(apiInfo.url, { timeout: 15000 });
-        const rawData = Array.isArray(response.data) ? response.data : response.data.data || [];
+        // 確保抓到的資料格式是陣列
+        const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
         
         const trucks = rawData.map(item => {
             try { return apiInfo.format(item); } catch (e) { return null; }
@@ -64,7 +65,7 @@ app.get('/api/garbage/nearby', async (req, res) => {
         if (!apiInfo || !lat || !lon) return res.status(400).json({ error: '缺少參數' });
 
         const response = await axios.get(apiInfo.url, { timeout: 15000 });
-        const rawData = Array.isArray(response.data) ? response.data : response.data.data || [];
+        const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
         
         const trucks = rawData.map(item => {
             try {
