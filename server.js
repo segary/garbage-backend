@@ -24,14 +24,15 @@ const CITY_APIS = {
     },
     newtaipei: {
         name: '新北市',
-        // 🌟 已替換成你專屬的新北市代理網址
-        url: 'https://newtaipei-proxy.segary1978.workers.dev', 
+        url: 'https://newtaipei-proxy.segary1978.workers.dev',
         format: (item) => ({
-            car: item.car || '未知車牌',
+            // 新北市沒有車牌欄位，顯示友善提示
+            car: '無車牌資料', 
             lineId: item.lineid || '未知路線',
-            location: item.location || '未知地點',
-            lat: parseFloat(item.latitude),
-            lon: parseFloat(item.longitude),
+            // 將 city + village + name 組合起來變成完整地點
+            location: `${item.city || ''}${item.village || ''}${item.name || ''}` || '未知地點',
+            lat: parseFloat(item.latitude || 0),
+            lon: parseFloat(item.longitude || 0),
             time: item.time || '未知時間'
         })
     }
@@ -44,7 +45,6 @@ app.get('/api/garbage/trucks', async (req, res) => {
         if (!apiInfo) return res.status(400).json({ error: '尚未支援該縣市' });
 
         const response = await axios.get(apiInfo.url, { timeout: 20000 });
-        // 確保抓到的資料格式是陣列
         const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
         
         const trucks = rawData.map(item => {
