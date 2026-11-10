@@ -5,11 +5,14 @@ const axios = require('axios');
 const app = express();
 app.use(cors());
 
-// 各縣市垃圾車 Open API 端點設定
+// 🌟 新增：首頁測試路由（確認伺服器有沒有活著）
+app.get('/', (req, res) => {
+    res.send('✅ 垃圾車後端伺服器正在運作中！請訪問 /api/garbage/trucks?city=newtaipei 進行測試。');
+});
+
 const CITY_APIS = {
     taichung: {
         name: '臺中市',
-        // 注意：台中市的 API 可能已變更，若持續失敗，建議先以新北市為主
         url: 'https://datacenter.taichung.gov.tw/swagger/OpenData/3f0a3f7a-7f0a-4a5a-9c1e-2b7e8f9d0c1b',
         format: (item) => ({
             car: item.car,
@@ -22,7 +25,6 @@ const CITY_APIS = {
     },
     newtaipei: {
         name: '新北市',
-        // 已確認此 API 網址在 2026 年仍可使用
         url: 'https://data.ntpc.gov.tw/api/datasets/EDC3AD26-8AE7-4916-A00B-BC6048D19BF8/json?page=0&size=10000',
         format: (item) => ({
             car: item.car,
@@ -35,12 +37,10 @@ const CITY_APIS = {
     }
 };
 
-// 查詢指定縣市的所有垃圾車
 app.get('/api/garbage/trucks', async (req, res) => {
     try {
         const { city } = req.query;
         const apiInfo = CITY_APIS[city];
-        
         if (!apiInfo) {
             return res.status(400).json({ error: '尚未支援該縣市，請選擇台中市(taichung)或新北市(newtaipei)' });
         }
@@ -48,49 +48,38 @@ app.get('/api/garbage/trucks', async (req, res) => {
         const response = await axios.get(apiInfo.url, { timeout: 8000 });
         const rawData = Array.isArray(response.data) ? response.data : response.data.data || [];
         const trucks = rawData.map(apiInfo.format);
-
         res.json({ city: apiInfo.name, count: trucks.length, trucks });
     } catch (error) {
         console.error(`取得 ${city} 資料失敗:`, error.message);
-        res.status(500).json({ 
-            error: `無法取得${CITY_APIS[city]?.name || city}的資料`, 
-            details: error.message 
-        });
+        res.status(500).json({ error: `無法取得${CITY_APIS[city]?.name || city}的資料`, details: error.message });
     }
 });
 
-// 查詢附近的垃圾車（計算距離）
 app.get('/api/garbage/nearby', async (req, res) => {
     try {
         const { city, lat, lon } = req.query;
         const apiInfo = CITY_APIS[city];
-        
         if (!apiInfo || !lat || !lon) {
             return res.status(400).json({ error: '請提供 city、lat、lon 參數' });
         }
 
         const response = await axios.get(apiInfo.url, { timeout: 8000 });
         const rawData = Array.isArray(response.data) ? response.data : response.data.data || [];
-        
         const trucks = rawData.map(item => {
             const truck = apiInfo.format(item);
             const distance = getDistance(lat, lon, truck.lat, truck.lon);
             return { ...truck, distance: Math.round(distance) };
         })
-        .filter(t => t.distance <= 2000) // 篩選 2 公里內的車輛
+        .filter(t => t.distance <= 2000)
         .sort((a, b) => a.distance - b.distance);
 
         res.json({ city: apiInfo.name, count: trucks.length, trucks });
     } catch (error) {
         console.error(`取得 ${city} 附近資料失敗:`, error.message);
-        res.status(500).json({ 
-            error: '無法取得附近垃圾車資料', 
-            details: error.message 
-        });
+        res.status(500).json({ error: '無法取得附近垃圾車資料', details: error.message });
     }
 });
 
-// Haversine 距離公式（回傳公尺）
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
