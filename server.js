@@ -9,6 +9,7 @@ app.use(cors());
 const CITY_APIS = {
     taichung: {
         name: '臺中市',
+        // 注意：台中市的 API 可能已變更，若持續失敗，建議先以新北市為主
         url: 'https://datacenter.taichung.gov.tw/swagger/OpenData/3f0a3f7a-7f0a-4a5a-9c1e-2b7e8f9d0c1b',
         format: (item) => ({
             car: item.car,
@@ -21,19 +22,8 @@ const CITY_APIS = {
     },
     newtaipei: {
         name: '新北市',
+        // 已確認此 API 網址在 2026 年仍可使用
         url: 'https://data.ntpc.gov.tw/api/datasets/EDC3AD26-8AE7-4916-A00B-BC6048D19BF8/json?page=0&size=10000',
-        format: (item) => ({
-            car: item.car,
-            lineId: item.lineid,
-            location: item.location,
-            lat: parseFloat(item.latitude),
-            lon: parseFloat(item.longitude),
-            time: item.time
-        })
-    },
-    kaohsiung: {
-        name: '高雄市',
-        url: 'https://api.kcg.gov.tw/api/service/Get/aaf4ce4b-4ca8-43de-bfaf-6dc97e89cac0',
         format: (item) => ({
             car: item.car,
             lineId: item.lineid,
@@ -50,8 +40,9 @@ app.get('/api/garbage/trucks', async (req, res) => {
     try {
         const { city } = req.query;
         const apiInfo = CITY_APIS[city];
+        
         if (!apiInfo) {
-            return res.status(400).json({ error: '尚未支援該縣市，請選擇台中市、新北市或高雄市' });
+            return res.status(400).json({ error: '尚未支援該縣市，請選擇台中市(taichung)或新北市(newtaipei)' });
         }
 
         const response = await axios.get(apiInfo.url, { timeout: 8000 });
@@ -61,7 +52,10 @@ app.get('/api/garbage/trucks', async (req, res) => {
         res.json({ city: apiInfo.name, count: trucks.length, trucks });
     } catch (error) {
         console.error(`取得 ${city} 資料失敗:`, error.message);
-        res.status(500).json({ error: `無法取得${CITY_APIS[city]?.name || city}的資料`, details: error.message });
+        res.status(500).json({ 
+            error: `無法取得${CITY_APIS[city]?.name || city}的資料`, 
+            details: error.message 
+        });
     }
 });
 
@@ -70,6 +64,7 @@ app.get('/api/garbage/nearby', async (req, res) => {
     try {
         const { city, lat, lon } = req.query;
         const apiInfo = CITY_APIS[city];
+        
         if (!apiInfo || !lat || !lon) {
             return res.status(400).json({ error: '請提供 city、lat、lon 參數' });
         }
@@ -88,7 +83,10 @@ app.get('/api/garbage/nearby', async (req, res) => {
         res.json({ city: apiInfo.name, count: trucks.length, trucks });
     } catch (error) {
         console.error(`取得 ${city} 附近資料失敗:`, error.message);
-        res.status(500).json({ error: '無法取得附近垃圾車資料', details: error.message });
+        res.status(500).json({ 
+            error: '無法取得附近垃圾車資料', 
+            details: error.message 
+        });
     }
 });
 
