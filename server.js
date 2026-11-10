@@ -13,8 +13,8 @@ app.get('/', (req, res) => {
 const CITY_APIS = {
     taichung: {
         name: '臺中市',
-        // 更新為台中市開放資料平台較新的端點
-        url: 'https://datacenter.taichung.gov.tw/swagger/OpenData/98B7B032-B9E2-4916-A1CF-F1B0C4D2DF6C', 
+        // 台中市 API 網址
+        url: 'https://datacenter.taichung.gov.tw/swagger/OpenData/3f0a3f7a-7f0a-4a5a-9c1e-2b7e8f9d0c1b', 
         format: (item) => ({
             car: item.car || '未知車牌',
             lineId: item.lineid || '未知路線',
@@ -39,8 +39,10 @@ const CITY_APIS = {
 };
 
 app.get('/api/garbage/trucks', async (req, res) => {
+    // 🌟 修正：將 city 的宣告移到 try 區塊外面
+    const { city } = req.query; 
+    
     try {
-        const { city } = req.query;
         const apiInfo = CITY_APIS[city];
         
         if (!apiInfo) {
@@ -50,19 +52,19 @@ app.get('/api/garbage/trucks', async (req, res) => {
         const response = await axios.get(apiInfo.url, { timeout: 8000 });
         const rawData = Array.isArray(response.data) ? response.data : response.data.data || [];
         
-        // 防護機制：如果資料格式有問題，跳過該筆
         const trucks = rawData.map(item => {
             try {
                 return apiInfo.format(item);
             } catch (e) {
-                return null;
+                return null; // 忽略格式錯誤的單筆資料
             }
         }).filter(t => t !== null);
 
         res.json({ city: apiInfo.name, count: trucks.length, trucks });
     } catch (error) {
         console.error(`取得 ${city} 資料失敗:`, error.message);
-        // 特別處理：如果是台中市，回傳空陣列，不要讓伺服器崩潰
+        
+        // 如果台中市 API 暫時掛掉，回傳空陣列，不讓伺服器崩潰
         if (city === 'taichung') {
             return res.json({ city: '臺中市', count: 0, trucks: [], message: '台中市 API 暫時無法連線，請稍後再試。' });
         }
@@ -71,8 +73,10 @@ app.get('/api/garbage/trucks', async (req, res) => {
 });
 
 app.get('/api/garbage/nearby', async (req, res) => {
+    // 🌟 修正：將參數宣告移到 try 區塊外面
+    const { city, lat, lon } = req.query;
+    
     try {
-        const { city, lat, lon } = req.query;
         const apiInfo = CITY_APIS[city];
         
         if (!apiInfo || !lat || !lon) {
