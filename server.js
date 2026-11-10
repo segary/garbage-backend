@@ -12,7 +12,6 @@ app.get('/', (req, res) => {
 const CITY_APIS = {
     taichung: {
         name: '臺中市',
-        // 🌟 這裡必須是你的 Cloudflare Worker 網址
         url: 'https://taichung-garbage-proxy.segary1978.workers.dev',
         format: (item) => ({
             car: item.car || '未知車牌',
@@ -34,6 +33,31 @@ const CITY_APIS = {
             lon: parseFloat(item.longitude),
             time: item.time
         })
+    },
+    // ⚠️ 以下為預留架構，實際網址需替換為該縣市開放資料平台的 API
+    taipei: {
+        name: '臺北市',
+        url: 'https://data.taipei/api/v1/dataset/2d107d71-83d6-467a-b86c-77e9122d5c69?scope=resourceAquire', // 範例網址
+        format: (item) => ({
+            car: item.car || '未知車牌',
+            lineId: item.lineid || '未知路線',
+            location: item.location || '未知地點',
+            lat: parseFloat(item.lat || 0),
+            lon: parseFloat(item.lon || 0),
+            time: item.time || '未知時間'
+        })
+    },
+    kaohsiung: {
+        name: '高雄市',
+        url: 'https://api.kcg.gov.tw/api/service/Get/aaf4ce4b-4ca8-43de-bfaf-6dc97e89cac0', // 範例網址
+        format: (item) => ({
+            car: item.car || '未知車牌',
+            lineId: item.lineid || '未知路線',
+            location: item.location || '未知地點',
+            lat: parseFloat(item.latitude || 0),
+            lon: parseFloat(item.longitude || 0),
+            time: item.time || '未知時間'
+        })
     }
 };
 
@@ -44,7 +68,6 @@ app.get('/api/garbage/trucks', async (req, res) => {
         if (!apiInfo) return res.status(400).json({ error: '尚未支援該縣市' });
 
         const response = await axios.get(apiInfo.url, { timeout: 15000 });
-        // 確保抓到的資料格式是陣列
         const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
         
         const trucks = rawData.map(item => {
